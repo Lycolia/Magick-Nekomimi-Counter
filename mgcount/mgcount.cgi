@@ -38,7 +38,7 @@ open(DAT,"+< $cf{datfile}");
 eval "flock(DAT, 2);";
 my $data = <DAT>;
 
-# 重複なしの場合カウントアップ
+# カウントアップしてよい条件を満たす場合にインクリメント
 if ($can_count_up) {
 	seek(DAT, 0, 0);
 	print DAT ++$data;
@@ -126,26 +126,18 @@ sub can_count_up {
 }
 
 sub is_human {
-	my $is_human;
+	my $is_bot_ua = is_bot_ua($ENV{HTTP_USER_AGENT});
+	my $is_jp_host = is_jp_host(get_remote_host());
+	my $is_ipv6 = is_ipv6($ENV{REMOTE_ADDR});
 
-	if (is_bot_ua($ENV{HTTP_USER_AGENT})) {
-		undef $is_human;
-	} else {
-		$is_human = 1;
-	}
-
-	if (is_jp_host(get_remote_host())) {
-		$is_human = 1;
-	} else {
-		undef $is_human;
-	}
-
+	# BOTUAならBOT確定、JPなら人間扱い、IPv6は国判定が重いので人間扱い
+	my $is_human = !$is_bot_ua && ($is_jp_host || $is_ipv6);
 	return $is_human;
 }
 
 sub is_bot_ua {
 	my $user_agent = shift;
-	return $user_agent =~ /(Mozilla\/5\.0 \(compatible;|bot)/;
+	return $user_agent =~ /bot|curl|wget|google|bing|mastodon|misskey|pleroma|akkoma|lemmy|activitypub|hatena|github|tumblr|meta|\+http|go|python|client|node|undici/;
 }
 
 sub get_remote_host {
@@ -162,4 +154,9 @@ sub get_remote_host {
 sub is_jp_host {
 	my $remote_host = shift;
 	return $remote_host =~ /\.(jp|nifty\.com|2iij\.net|bbtec\.net)$/;
+}
+
+sub is_ipv6 {
+	my $ip_addr = shift;
+	return $ip_addr =~ /:/;
 }
